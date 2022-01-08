@@ -1,2 +1,6 @@
 <div id="<%= dom_id todo %>">
+	<p>
+	<%= "#{todo.title} (#{todo.complete? ? "Complete" : "Incomplete"})" %>
+	<%= link_to "Show this todo", user_todo_path(id: todo.id) %>
+	</p>
 </div>

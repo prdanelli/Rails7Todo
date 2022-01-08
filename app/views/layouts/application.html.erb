@@ -1,16 +1,27 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>RailsDockerBase</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <%= csrf_meta_tags %>
-    <%= csp_meta_tag %>
+	<head>
+		<title>RailsDockerBase</title>
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<%= csrf_meta_tags %>
+		<%= csp_meta_tag %>
 		<%= action_cable_meta_tag %>
 
-    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-  </head>
+		<%= stylesheet_link_tag "application", "custom" %>
+    <%= javascript_importmap_tags %>
+	</head>
 
-  <body>
-    <%= yield %>
-  </body>
+	<body>
+		<main class="container">
+			<% flash.each do |type, msg| %>
+				<%= type %>
+				<% types = { notice: :info, error: :danger, success: :success } %>
+				<div class="alert alert-<%= types[type.to_sym] %>" role="alert">
+					<%= msg %>
+				</div>
+			<% end %>
+
+			<%= yield %>
+		</main>
+	</body>
 </html>
