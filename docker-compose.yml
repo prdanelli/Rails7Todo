@@ -11,7 +11,7 @@ x-app: &app
   volumes:
     - .:/usr/src/app
   environment: &app_env
-    ACTION_CABLE_ADAPTER: any_cable
+    ACTION_CABLE_ADAPTER: redis
     REDIS_URL: redis://redis:6379/0
     REDIS_SIDEKIQ_URL: redis://redis:6379/1
     CABLE_URL: ws://localhost:8080/cable
@@ -21,7 +21,7 @@ x-app: &app
     ANYCABLE_DEBUG: 1
 
 services:
-  rails:
+  web:
     <<: *app
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
     ports:
@@ -31,8 +31,6 @@ services:
     depends_on:
       sidekiq:
         condition: service_started
-      websocket:
-        condition: service_started
       database:
         condition: service_healthy
       redis:
@@ -40,14 +38,17 @@ services:
 
   database:
     image: postgres:latest
+    user: postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: app_development
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=rails
+      - POSTGRES_MULTIPLE_DATABASES=app_development,app_test
     volumes:
-      - ./.volumes/postgres/data:/var/lib/postgres/data
+      - .docker/postgres/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d
+      - database:/var/lib/postgres/data
     ports:
       - 5432:5432
+    restart: always
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 10s
@@ -70,7 +71,7 @@ services:
     ports:
       - 6379:6379
     volumes:
-      - ./.volumes/redis:/data
+      - redis:/data
     command: ["--appendonly yes"]
     healthcheck:
       test: redis-cli ping
@@ -78,43 +79,6 @@ services:
       timeout: 5s
       retries: 30
 
-  websocket:
-    image: anycable/anycable-go:latest
-    ports:
-      - 8080:8080
-    environment:
-      <<: *app_env
-    depends_on:
-      redis:
-        condition: service_healthy
-
-  anycable:
-    <<: *app
-    command: bundle exec anycable
-    ports:
-      - "50051"
-    depends_on:
-      websocket:
-        condition: service_started
-      redis:
-        condition: service_healthy
-
-  elasticsearch:
-    image: elasticsearch:7.16.1
-    ports:
-      - "9200:9200"
-    volumes:
-      - ./.volumes/elasticsearch/:/usr/share/elasticsearch/data
-    environment:
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - "discovery.type=single-node"
-
-  kibana:
-    image: kibana:7.16.1
-    ports:
-      - "5601:5601"
-    depends_on:
-      - elasticsearch
-    environment:
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - "discovery.type=single-node"
+volumes:
+  database:
+  redis:
